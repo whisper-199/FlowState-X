@@ -8,36 +8,32 @@ module.exports = async function handler(req, res) {
   const { topic, tone } = req.body || {};
   if (!topic) return res.status(400).json({ error: 'Topic is required' });
 
-  const { ANTHROPIC_API_KEY } = process.env;
-  if (!ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set in Vercel env vars.' });
+  const { GEMINI_API_KEY } = process.env;
+  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not configured.' });
+
+  const prompt = `You are a world-class X (Twitter) content strategist. Generate 6 sharply distinct post ideas about: "${topic}". Tone: ${tone || 'witty'}.
+Rules: under 260 chars each, punchy, scroll-stopping.
+For each: "type" (Hot Take|Story|Question|Data Point|Thread Hook|Contrarian View), "text" (the tweet), "hook" (4-word reason it works).
+Respond ONLY with a valid JSON array. No markdown, no backticks, no preamble.`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: `You are an expert X (Twitter) content strategist. Generate 6 diverse post ideas about: "${topic}". Tone: ${tone || 'witty'}.
-For each provide:
-- "type": short label (Hot Take, Story, Question, Stat, Thread, Listicle, Poll, Unpopular Opinion)
-- "text": ready-to-post text under 280 characters
-Respond ONLY with a valid JSON array. No markdown, no backticks, no preamble.`
-        }]
-      })
-    });
-    const data = await response.json();
-    const raw = data.content.map(c => c.text || '').join('').replace(/```json|```/g, '').trim();
-    const ideas = JSON.parse(raw);
-    return res.status(200).json({ ideas });
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 1200 }
+        })
+      }
+    );
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error?.message || 'Gemini error');
+    const raw = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/g,'').trim();
+    return res.status(200).json({ ideas: JSON.parse(raw) });
   } catch (err) {
-    console.error('[PostFlow] Ideas error:', err.message);
+    console.error('[PostFlow] Ideas:', err.message);
     return res.status(500).json({ error: err.message || 'Failed to generate ideas.' });
   }
 };
