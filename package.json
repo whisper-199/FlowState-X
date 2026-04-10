@@ -1,0 +1,8 @@
+{
+  "name": "postflow",
+  "version": "3.0.0",
+  "description": "PostFlow – X Content Manager hosted on Vercel",
+  "dependencies": {
+    "twitter-api-v2": "^1.17.0"
+  }
+}
