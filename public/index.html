@@ -549,17 +549,10 @@ async function generateIdeas(){
   btn.disabled=true; btn.textContent='Generating…';
   document.getElementById('ideas-container').innerHTML=`<div class="loading-state"><div class="spinner"></div><div>Crafting ideas for "${esc(topic)}"…</div></div>`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are an expert X (Twitter) content strategist. Generate 6 diverse post ideas about: "${topic}". Tone: ${tone}.
-For each provide:
-- "type": short label (Hot Take, Story, Question, Stat, Thread, Listicle, Poll, Unpopular Opinion)
-- "text": ready-to-post text under 280 characters
-Respond ONLY with a valid JSON array. No markdown, no backticks, no preamble.`}]})
-    });
+    const res=await fetch('/api/ideas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,tone})});
     const data=await res.json();
-    const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
-    const ideas=JSON.parse(raw);
+    if(!res.ok) throw new Error(data.error||'Failed to generate ideas');
+    const ideas=data.ideas;
     document.getElementById('ideas-container').innerHTML=`<div class="ideas-grid">${ideas.map(idea=>`
       <div class="idea-card">
         <div class="idea-type">${esc(idea.type)}</div>
@@ -748,6 +741,14 @@ function saveEdit(){
   p.text=text; p.date=document.getElementById('edit-date').value; p.time=document.getElementById('edit-time').value;
   if(p.status==='failed') p.status='scheduled';
   save();renderScheduled();renderCalendar();closeEditModal();showToast('Post updated!');
+}
+
+function updateConnectBtn(){
+  const btn=document.getElementById('connect-btn');
+  if(!btn)return;
+  const signedIn=currentUser&&currentUser.authenticated;
+  btn.textContent=signedIn?`@${currentUser.screenName}`:'Connect X';
+  btn.className='tbar-btn'+(signedIn?' connected':'');
 }
 
 async function pingServer(){

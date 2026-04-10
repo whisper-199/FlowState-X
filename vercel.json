@@ -9,6 +9,7 @@
     { "src": "/api/callback", "dest": "/api/callback.js" },
     { "src": "/api/logout", "dest": "/api/logout.js" },
     { "src": "/api/tweet", "dest": "/api/tweet.js" },
+    { "src": "/api/ideas", "dest": "/api/ideas.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ],
   "headers": [
