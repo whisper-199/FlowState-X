@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostFlow – X Content Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;--white:#f9f8f5;
+  --g1:#1a1a1a;--g2:#2a2a2a;--g3:#3d3d3d;--g4:#6b6b6b;--g5:#9a9a9a;--g6:#d0cfc8;
+  --accent:#e8ff47;--accent-dim:#c8dd2a;
+  --red:#ff4545;--teal:#1bccaa;--blue:#5b9cf6;--purple:#a78bfa;--orange:#f97316;
+  --font-serif:'DM Serif Display',serif;--font-sans:'DM Sans',sans-serif;
+  --r:10px;--rl:16px;
+}
+body{font-family:var(--font-sans);background:var(--black);color:var(--white);min-height:100vh;font-size:14px;line-height:1.6}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.sidebar{background:var(--g1);border-right:1px solid var(--g2);display:flex;flex-direction:column;padding:28px 0;position:sticky;top:0;height:100vh}
+.logo{padding:0 22px 22px;border-bottom:1px solid var(--g2)}
+.logo-mark{font-family:var(--font-serif);font-size:22px;color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--g4);margin-top:2px;letter-spacing:.6px;text-transform:uppercase}
+.nav{padding:14px 10px;flex:1;display:flex;flex-direction:column;gap:3px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;color:var(--g4);font-size:13px;border:none;background:transparent;width:100%;text-align:left;transition:all .15s}
+.nav-item:hover{background:var(--g2);color:var(--white)}
+.nav-item.active{background:var(--accent);color:var(--black);font-weight:600}
+.nav-icon{font-size:14px;width:18px;text-align:center}
+.sidebar-bottom{padding:14px 14px 0;border-top:1px solid var(--g2);margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.server-status{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:var(--r);background:var(--g2);font-size:11px}
+.srv-dot{width:7px;height:7px;border-radius:50%;background:var(--g4);flex-shrink:0;transition:background .3s}
+.srv-dot.online{background:var(--teal);box-shadow:0 0 6px rgba(27,204,170,.5)}
+.srv-dot.offline{background:var(--red)}
+.srv-label{color:var(--g5);flex:1}
+.srv-label.online{color:var(--teal)}
+.streak-card{background:var(--g2);border-radius:var(--r);padding:11px 12px;display:flex;justify-content:space-between;align-items:center}
+.streak-num{font-family:var(--font-serif);font-size:24px;color:var(--accent);line-height:1}
+.auto-badge{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:20px;display:inline-block}
+.auto-badge.on{background:rgba(232,255,71,.15);color:var(--accent-dim)}
+.auto-badge.off{background:var(--g3);color:var(--g5)}
+.main{display:flex;flex-direction:column;overflow:auto}
+.topbar{padding:18px 30px;border-bottom:1px solid var(--g2);display:flex;align-items:center;justify-content:space-between;background:var(--black);position:sticky;top:0;z-index:10}
+.page-title{font-family:var(--font-serif);font-size:21px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.date-badge{font-size:12px;color:var(--g4);background:var(--g2);padding:5px 13px;border-radius:20px}
+.tbar-btn{font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;border:1px solid var(--g3);background:transparent;cursor:pointer;font-family:var(--font-sans);transition:all .15s;color:var(--g5)}
+.tbar-btn:hover{border-color:var(--g5);color:var(--white)}
+.tbar-btn.on{border-color:var(--accent-dim);color:var(--accent-dim);background:rgba(232,255,71,.06)}
+.tbar-btn.connected{border-color:var(--teal);color:var(--teal);background:rgba(27,204,170,.08)}
+.content{padding:26px 30px;flex:1}
+.page{display:none}
+.page.active{display:block}
+input[type="text"],input[type="password"],input[type="date"],input[type="time"],textarea,select{background:var(--g1);border:1px solid var(--g3);border-radius:var(--r);color:var(--white);font-family:var(--font-sans);font-size:13px;padding:10px 14px;outline:none;width:100%;transition:border-color .15s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+select option{background:var(--g1)}
+.label{font-size:11px;color:var(--g4);font-weight:500;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.btn{padding:10px 20px;border-radius:var(--r);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-accent{background:var(--accent);color:var(--black)}
+.btn-accent:hover{background:var(--accent-dim)}
+.btn-accent:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--g4);border:1px solid var(--g3)}
+.btn-ghost:hover{color:var(--white);border-color:var(--g5)}
+.section-header{margin-bottom:20px}
+.section-title{font-family:var(--font-serif);font-size:19px;color:var(--white);margin-bottom:4px}
+.section-sub{font-size:13px;color:var(--g4)}
+.ai-tag{display:inline-flex;font-size:10px;font-weight:600;color:var(--accent-dim);background:rgba(232,255,71,.08);padding:3px 8px;border-radius:20px;margin-left:8px}
+/* IDEAS */
+.idea-form{display:grid;grid-template-columns:1fr 140px auto;gap:10px;margin-bottom:22px}
+.ideas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px}
+.idea-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:17px;transition:border-color .2s}
+.idea-card:hover{border-color:var(--g3)}
+.idea-type{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--accent-dim);margin-bottom:9px}
+.idea-text{font-size:13px;line-height:1.65;margin-bottom:13px}
+.idea-actions{display:flex;gap:7px;flex-wrap:wrap}
+.idea-btn{font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid var(--g3);background:transparent;color:var(--g4);cursor:pointer;font-family:var(--font-sans);transition:all .15s}
+.idea-btn:hover{background:var(--g2);color:var(--white)}
+.idea-btn.sch{border-color:var(--teal);color:var(--teal)}
+.idea-btn.sch:hover{background:rgba(27,204,170,.1)}
+.idea-btn.pnow{border-color:var(--blue);color:var(--blue)}
+.idea-btn.pnow:hover{background:rgba(91,156,246,.1)}
+.loading-state{display:flex;flex-direction:column;align-items:center;padding:48px;color:var(--g4);gap:12px}
+.spinner{width:26px;height:26px;border:2px solid var(--g3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{display:flex;flex-direction:column;align-items:center;padding:56px 32px;color:var(--g4);text-align:center;gap:6px}
+.empty-icon{font-size:30px;margin-bottom:8px}
+.empty-title{color:var(--g5);font-size:15px}
+/* SCHEDULER */
+.scheduler-layout{display:grid;grid-template-columns:1fr 330px;gap:20px}
+.calendar-grid{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);overflow:hidden}
+.cal-header{display:flex;align-items:center;justify-content:space-between;padding:13px 17px;border-bottom:1px solid var(--g2)}
+.cal-month{font-family:var(--font-serif);font-size:16px}
+.cal-nav{background:none;border:none;color:var(--g4);font-size:18px;cursor:pointer;padding:3px 8px;border-radius:6px}
+.cal-nav:hover{color:var(--white);background:var(--g2)}
+.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);padding:9px 11px 3px}
+.cal-day-name{text-align:center;font-size:10px;font-weight:600;color:var(--g4);letter-spacing:.5px;text-transform:uppercase}
+.cal-cells{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;padding:0 11px 11px}
+.cal-cell{min-height:60px;border-radius:7px;padding:5px;cursor:pointer;transition:background .15s}
+.cal-cell:hover{background:var(--g2)}
+.cal-cell.today{outline:1px solid var(--accent)}
+.cal-cell.other-month .cal-date{color:var(--g3)}
+.cal-date{font-size:11px;font-weight:500;color:var(--g5)}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);margin-top:3px}
+.cal-dot.done{background:var(--accent-dim)}
+.cal-preview{font-size:9px;color:var(--g4);line-height:1.3;margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.post-panel{display:flex;flex-direction:column;gap:13px}
+.panel-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:15px}
+.panel-title{font-size:13px;font-weight:600;margin-bottom:11px}
+.char-count{text-align:right;font-size:11px;color:var(--g4);margin-top:5px}
+.char-count.warn{color:var(--red)}
+.time-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+.btn-pair{display:flex;gap:8px;margin-top:9px}
+.add-post-btn{flex:2;padding:11px;border-radius:var(--r);background:var(--accent);color:var(--black);font-family:var(--font-sans);font-size:13px;font-weight:600;border:none;cursor:pointer;transition:background .15s}
+.add-post-btn:hover{background:var(--accent-dim)}
+.draft-btn{flex:1;padding:11px;border-radius:var(--r);background:var(--g3);color:var(--g6);font-family:var(--font-sans);font-size:13px;font-weight:600;border:none;cursor:pointer;transition:background .15s}
+.draft-btn:hover{background:var(--g4)}
+.scheduled-posts{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
+/* POST ITEMS */
+.si{padding:10px 12px;border-radius:var(--r);border-left:3px solid var(--g3);background:var(--g2)}
+.si.status-scheduled{border-left-color:var(--blue)}
+.si.status-posted{border-left-color:var(--teal)}
+.si.status-failed{border-left-color:var(--red)}
+.si.status-draft{border-left-color:var(--g4)}
+.si-time{font-size:10px;font-weight:600;color:var(--blue);margin-bottom:3px}
+.si-time.posted{color:var(--teal)}
+.si-time.failed{color:var(--red)}
+.si-time.draft{color:var(--g4)}
+.si-text{font-size:12px;color:var(--g6);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.si-link{font-size:10px;color:var(--teal);text-decoration:none;display:inline-block;margin-top:3px}
+.si-link:hover{text-decoration:underline}
+.si-actions{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.sb{font-size:10px;padding:3px 9px;border-radius:20px;border:1px solid var(--g3);background:transparent;cursor:pointer;font-family:var(--font-sans);transition:all .15s;color:var(--g4)}
+.sb:hover{color:var(--white);background:var(--g3)}
+.sb.post{border-color:var(--blue);color:var(--blue)}
+.sb.post:hover{background:rgba(91,156,246,.1)}
+.sb.retry{border-color:var(--orange);color:var(--orange)}
+.sb.retry:hover{background:rgba(249,115,22,.1)}
+.sb.edit{border-color:var(--purple);color:var(--purple)}
+.sb.edit:hover{background:rgba(167,139,250,.1)}
+.sb.del:hover{color:var(--red);border-color:var(--red)}
+.sb:disabled{opacity:.4;cursor:not-allowed}
+/* ANALYTICS */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:22px}
+.metric{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:15px}
+.metric-value{font-family:var(--font-serif);font-size:26px;line-height:1}
+.metric-label{font-size:11px;color:var(--g4);margin-top:4px}
+.mv-y{color:var(--accent)}.mv-g{color:var(--teal)}.mv-b{color:var(--blue)}.mv-o{color:var(--orange)}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:22px}
+.chart-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:17px}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:13px}
+.chart-wrap{position:relative;height:190px}
+.goal-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:22px}
+.goal-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:17px}
+.goal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.goal-title{font-size:13px;font-weight:600}
+.goal-val{font-size:12px;color:var(--g4)}
+.progress-track{height:5px;background:var(--g2);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.goal-sub{font-size:11px;color:var(--g4);margin-top:5px}
+.history-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:17px}
+.history-list{display:flex;flex-direction:column;gap:7px;max-height:300px;overflow-y:auto}
+.hi{display:flex;gap:11px;padding:9px 11px;background:var(--g2);border-radius:var(--r)}
+.hi-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.hi-dot.posted{background:var(--teal)}.hi-dot.scheduled{background:var(--blue)}.hi-dot.failed{background:var(--red)}.hi-dot.draft{background:var(--g4)}
+.hi-meta{flex:1}
+.hi-date{font-size:10px;color:var(--g4);font-weight:600;margin-bottom:2px}
+.hi-text{font-size:12px;color:var(--g6);line-height:1.5}
+.hi-footer{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap}
+.hi-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.hb-posted{background:rgba(27,204,170,.1);color:var(--teal)}.hb-scheduled{background:rgba(91,156,246,.1);color:var(--blue)}.hb-failed{background:rgba(255,69,69,.1);color:var(--red)}.hb-draft{background:var(--g3);color:var(--g5)}
+.hi-link{font-size:10px;color:var(--teal);text-decoration:none}
+.hi-link:hover{text-decoration:underline}
+/* API PAGE */
+.api-layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.api-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:20px;margin-bottom:14px}
+.api-card:last-child{margin-bottom:0}
+.api-card-title{font-family:var(--font-serif);font-size:16px;margin-bottom:5px}
+.api-card-sub{font-size:12px;color:var(--g4);margin-bottom:16px;line-height:1.6}
+.api-status{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:var(--r);margin-bottom:14px;font-size:12px}
+.api-status.ok{background:rgba(27,204,170,.08);border:1px solid rgba(27,204,170,.2);color:var(--teal)}
+.api-status.none{background:var(--g2);border:1px solid var(--g3);color:var(--g4)}
+.api-dot{width:7px;height:7px;border-radius:50%}
+.api-status.ok .api-dot{background:var(--teal)}
+.api-status.none .api-dot{background:var(--g4)}
+.field-row{margin-bottom:12px}
+.keys-input{font-family:monospace;font-size:12px}
+.btn-row{display:flex;gap:8px}
+.info-box{background:rgba(91,156,246,.06);border:1px solid rgba(91,156,246,.2);border-radius:var(--r);padding:11px 13px;font-size:12px;color:var(--g5);line-height:1.7;margin-top:10px}
+.info-box strong{color:var(--blue)}
+.info-box.success{background:rgba(27,204,170,.06);border-color:rgba(27,204,170,.2)}
+.info-box.success strong{color:var(--teal)}
+.steps-list{display:flex;flex-direction:column;gap:13px}
+.step-item{display:flex;gap:11px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--g2);border:1px solid var(--g3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--g5);flex-shrink:0;margin-top:2px}
+.step-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.step-desc{font-size:12px;color:var(--g4);line-height:1.6}
+.step-link{color:var(--blue);text-decoration:none}
+.step-link:hover{text-decoration:underline}
+.code{background:var(--g2);padding:2px 7px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--g6)}
+.post-live-btn{width:100%;padding:11px;border-radius:var(--r);background:var(--blue);color:var(--white);font-family:var(--font-sans);font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
+.post-live-btn:hover{background:#3b7de8}
+.post-live-btn:disabled{opacity:.45;cursor:not-allowed}
+.auto-info{background:rgba(232,255,71,.06);border:1px solid rgba(232,255,71,.15);border-radius:var(--r);padding:11px 13px;font-size:12px;color:var(--g5);line-height:1.7;margin-top:10px}
+.auto-info strong{color:var(--accent-dim)}
+/* TIPS */
+.tips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:13px}
+.tip-card{background:var(--g1);border:1px solid var(--g2);border-radius:var(--rl);padding:17px}
+.tip-cat{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 9px;border-radius:20px;display:inline-block;margin-bottom:9px}
+.tip-cat.e{background:rgba(232,255,71,.1);color:var(--accent-dim)}.tip-cat.t{background:rgba(27,204,170,.1);color:var(--teal)}.tip-cat.c{background:rgba(255,69,69,.1);color:var(--red)}.tip-cat.m{background:rgba(167,139,250,.1);color:var(--purple)}
+.tip-title{font-family:var(--font-serif);font-size:15px;margin-bottom:6px}
+.tip-desc{font-size:12px;color:var(--g5);line-height:1.65}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--g1);border:1px solid var(--g3);border-radius:var(--rl);padding:26px;width:440px;max-width:95vw}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-family:var(--font-serif);font-size:18px}
+.modal-close{background:none;border:none;color:var(--g4);cursor:pointer;font-size:20px}
+.modal-close:hover{color:var(--white)}
+.modal-footer{display:flex;gap:9px;margin-top:18px;justify-content:flex-end}
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;padding:10px 17px;border-radius:var(--r);font-size:13px;font-weight:600;transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:999;max-width:340px}
+.toast.ok{background:var(--teal);color:var(--black)}.toast.err{background:var(--red);color:var(--white)}.toast.info{background:var(--blue);color:var(--white)}
+.toast.show{transform:translateY(0);opacity:1}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--g3);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">PostFlow</div>
+      <div class="logo-sub">X Content Manager</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" onclick="switchPage('ideas',this)"><span class="nav-icon">✦</span> Idea Generator</button>
+      <button class="nav-item" onclick="switchPage('schedule',this)"><span class="nav-icon">◫</span> Scheduler</button>
+      <button class="nav-item" onclick="switchPage('analytics',this)"><span class="nav-icon">↗</span> Analytics</button>
+      <button class="nav-item" onclick="switchPage('api',this)"><span class="nav-icon">⚡</span> X Account</button>
+      <button class="nav-item" onclick="switchPage('tips',this)"><span class="nav-icon">★</span> Growth Tips</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="server-status">
+        <div class="srv-dot" id="srv-dot"></div>
+        <span class="srv-label" id="srv-label">Checking…</span>
+      </div>
+      <div class="streak-card">
+        <div><div class="streak-num" id="streak-count">0</div><div style="font-size:10px;color:var(--g4)">posts total</div></div>
+        <div class="auto-badge off" id="auto-badge">Auto: OFF</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title" id="page-title">Idea Generator</div>
+      <div class="topbar-right">
+        <div class="date-badge" id="today-date"></div>
+        <button class="tbar-btn" id="auto-toggle-btn" onclick="toggleAutoScheduler()">Auto-post: OFF</button>
+        <button class="tbar-btn" id="connect-btn" onclick="handleConnectClick()">Connect X</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- IDEAS -->
+      <div class="page active" id="page-ideas">
+        <div class="section-header">
+          <div class="section-title">Generate post ideas <span class="ai-tag">AI-powered</span></div>
+          <div class="section-sub">Enter a topic or niche and get 6 tailored X post ideas instantly</div>
+        </div>
+        <div class="idea-form">
+          <input type="text" id="topic-input" placeholder="e.g. startup life, football, tech news, morning routines..." onkeydown="if(event.key==='Enter')generateIdeas()"/>
+          <select id="tone-select">
+            <option value="witty">Witty</option><option value="informative">Informative</option>
+            <option value="controversial">Controversial</option><option value="inspirational">Inspirational</option>
+            <option value="storytelling">Storytelling</option><option value="thread">Thread idea</option>
+          </select>
+          <button class="btn btn-accent" id="gen-btn" onclick="generateIdeas()">Generate</button>
+        </div>
+        <div id="ideas-container">
+          <div class="empty-state"><div class="empty-icon">✦</div><div class="empty-title">Your ideas will appear here</div><div class="section-sub">Enter a topic above and click Generate</div></div>
+        </div>
+      </div>
+
+      <!-- SCHEDULER -->
+      <div class="page" id="page-schedule">
+        <div class="section-header">
+          <div class="section-title">Content calendar</div>
+          <div class="section-sub">Schedule posts — when auto-post is ON they fire automatically via Vercel</div>
+        </div>
+        <div class="scheduler-layout">
+          <div class="calendar-grid">
+            <div class="cal-header">
+              <button class="cal-nav" onclick="prevMonth()">‹</button>
+              <div class="cal-month" id="cal-month-label"></div>
+              <button class="cal-nav" onclick="nextMonth()">›</button>
+            </div>
+            <div class="cal-days-header" id="cal-days-header"></div>
+            <div class="cal-cells" id="cal-cells"></div>
+          </div>
+          <div class="post-panel">
+            <div class="panel-card">
+              <div class="panel-title" id="selected-date-label">Select a day to schedule</div>
+              <label class="label">Post content</label>
+              <textarea id="post-textarea" placeholder="What's on your mind? (max 280 chars)" maxlength="280" oninput="updateCharCount()"></textarea>
+              <div class="char-count" id="char-count">0 / 280</div>
+              <div class="time-row">
+                <div><label class="label">Date</label><input type="date" id="post-date"/></div>
+                <div><label class="label">Time</label><input type="time" id="post-time" value="09:00"/></div>
+              </div>
+              <div class="btn-pair">
+                <button class="add-post-btn" onclick="addPost('scheduled')">Schedule post</button>
+                <button class="draft-btn" onclick="addPost('draft')">Save draft</button>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="panel-title">Upcoming posts</div>
+              <div class="scheduled-posts" id="scheduled-posts"><div style="color:var(--g4);font-size:12px;text-align:center;padding:16px">No posts yet</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="page" id="page-analytics">
+        <div class="section-header">
+          <div class="section-title">Your posting analytics</div>
+          <div class="section-sub">Track output, consistency, and goals</div>
+        </div>
+        <div class="metrics-row">
+          <div class="metric"><div class="metric-value mv-y" id="a-total">0</div><div class="metric-label">Total scheduled</div></div>
+          <div class="metric"><div class="metric-value mv-g" id="a-posted">0</div><div class="metric-label">Successfully posted</div></div>
+          <div class="metric"><div class="metric-value mv-b" id="a-days">0</div><div class="metric-label">Active days</div></div>
+          <div class="metric"><div class="metric-value mv-o" id="a-failed">0</div><div class="metric-label">Failed posts</div></div>
+        </div>
+        <div class="goal-row">
+          <div class="goal-card">
+            <div class="goal-header"><div class="goal-title">Weekly goal (7 posts)</div><div class="goal-val" id="wk-val">0 / 7</div></div>
+            <div class="progress-track"><div class="progress-fill" id="wk-bar" style="background:var(--accent);width:0%"></div></div>
+            <div class="goal-sub" id="wk-sub">Schedule 7 posts this week</div>
+          </div>
+          <div class="goal-card">
+            <div class="goal-header"><div class="goal-title">Monthly output (30 posts)</div><div class="goal-val" id="mo-val">0 / 30</div></div>
+            <div class="progress-track"><div class="progress-fill" id="mo-bar" style="background:var(--teal);width:0%"></div></div>
+            <div class="goal-sub">30 posts/month = consistent daily presence</div>
+          </div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card"><div class="chart-title">Posts by day of week</div><div class="chart-wrap"><canvas id="dow-chart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Posts by scheduled hour</div><div class="chart-wrap"><canvas id="hour-chart"></canvas></div></div>
+        </div>
+        <div class="history-card">
+          <div class="chart-title" style="margin-bottom:13px">Post history</div>
+          <div class="history-list" id="history-list"><div style="color:var(--g4);font-size:12px;text-align:center;padding:18px">No posts yet</div></div>
+        </div>
+      </div>
+
+      <!-- X ACCOUNT -->
+      <div class="page" id="page-api">
+        <div class="section-header">
+          <div class="section-title">X account</div>
+          <div class="section-sub">Sign in once with X — no API keys needed. PostFlow posts on your behalf securely.</div>
+        </div>
+        <div class="api-layout">
+          <div>
+            <!-- NOT signed in -->
+            <div class="api-card" id="signin-card">
+              <div class="api-card-title">Connect your X account</div>
+              <div class="api-card-sub">Click the button below to authorise PostFlow via X's official OAuth. You'll be redirected to X, approve once, and land right back here — signed in.</div>
+              <div id="api-status-bar" class="api-status none" style="margin-bottom:16px"><div class="api-dot"></div><span id="api-status-text">Not connected</span></div>
+              <a href="/api/auth" class="post-live-btn" id="signin-btn" style="display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;color:var(--white);background:#000;border:1px solid var(--g3)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                Sign in with X
+              </a>
+              <div class="info-box" style="margin-top:13px">
+                <strong>Private &amp; secure:</strong> PostFlow never sees your X password. Your access token is encrypted server-side and stored in an HttpOnly cookie — never in localStorage.
+              </div>
+            </div>
+
+            <!-- Signed in -->
+            <div class="api-card" id="signedIn-card" style="display:none">
+              <div class="api-card-title">Connected account</div>
+              <div id="api-status-bar-connected" class="api-status ok" style="margin-bottom:16px">
+                <div class="api-dot"></div>
+                <span id="api-status-text-connected">Connected</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:13px;background:var(--g2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px">
+                <div style="width:38px;height:38px;border-radius:50%;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">𝕏</div>
+                <div>
+                  <div style="font-weight:600;font-size:14px" id="connected-name">—</div>
+                  <div style="font-size:12px;color:var(--g4)" id="connected-handle">—</div>
+                </div>
+              </div>
+              <a href="/api/logout" class="btn btn-ghost" style="display:block;text-align:center;text-decoration:none;width:100%">Disconnect account</a>
+            </div>
+
+            <div class="api-card">
+              <div class="api-card-title">Auto-scheduler</div>
+              <div class="api-card-sub">When ON, PostFlow checks every 60 seconds for due posts and fires them automatically.</div>
+              <button class="post-live-btn" id="auto-main-btn" onclick="toggleAutoScheduler()" style="background:var(--g3);margin-bottom:10px">Enable auto-posting</button>
+              <div class="auto-info"><strong>How it works:</strong> Any "Scheduled" post whose date+time has passed posts automatically. Failed posts retry up to 3 times, then mark as failed.</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="api-card">
+              <div class="api-card-title">Deploy guide</div>
+              <div class="api-card-sub">Free forever. No credit card. Live in under 10 minutes.</div>
+              <div class="steps-list">
+                <div class="step-item"><div class="step-num">1</div><div>
+                  <div class="step-title">Push to GitHub</div>
+                  <div class="step-desc">Repo structure:<br>
+                    <span class="code">vercel.json</span> <span class="code">package.json</span><br>
+                    <span class="code">api/auth.js</span> <span class="code">api/callback.js</span><br>
+                    <span class="code">api/tweet.js</span> <span class="code">api/logout.js</span><br>
+                    <span class="code">public/index.html</span>
+                  </div>
+                </div></div>
+                <div class="step-item"><div class="step-num">2</div><div>
+                  <div class="step-title">Create X app at developer.x.com</div>
+                  <div class="step-desc">Go to <a class="step-link" href="https://developer.x.com/en/portal/projects-and-apps" target="_blank">developer.x.com</a>, create an app with <strong>Read + Write</strong> permissions. Set the callback URL to <span class="code">https://YOUR-DOMAIN.vercel.app/api/callback</span></div>
+                </div></div>
+                <div class="step-item"><div class="step-num">3</div><div>
+                  <div class="step-title">Import on Vercel + set env vars</div>
+                  <div class="step-desc">Go to <a class="step-link" href="https://vercel.com/new" target="_blank">vercel.com/new</a>, import your repo. In Settings → Environment Variables add:<br>
+                    <span class="code">TWITTER_API_KEY</span><br>
+                    <span class="code">TWITTER_API_SECRET</span><br>
+                    <span class="code">SESSION_SECRET</span> (any long random string)
+                  </div>
+                </div></div>
+                <div class="step-item"><div class="step-num">4</div><div>
+                  <div class="step-title">Deploy &amp; sign in</div>
+                  <div class="step-desc">Click Deploy. Visit your live URL, go to X Account, click <strong>Sign in with X</strong> — done. Any visitor can now authorise their own X account.</div>
+                </div></div>
+              </div>
+              <div class="info-box" style="margin-top:14px"><strong>Completely free:</strong> Vercel Hobby plan + X Free tier is enough for personal use. No credit card required on either platform.</div>
+            </div>
+
+            <div class="api-card">
+              <div class="api-card-title">Post to X now</div>
+              <div class="api-card-sub">Compose and send directly — requires being signed in above</div>
+              <textarea id="live-post-text" placeholder="What's happening? (max 280 chars)" maxlength="280" oninput="updateLiveCount()" style="min-height:90px;margin-bottom:6px"></textarea>
+              <div class="char-count" id="live-char-count" style="margin-bottom:11px">0 / 280</div>
+              <button class="post-live-btn" id="post-live-btn" onclick="postLive()">Post to X →</button>
+              <div id="live-result" style="margin-top:10px;display:none"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIPS -->
+      <div class="page" id="page-tips">
+        <div class="section-header">
+          <div class="section-title">Organic growth playbook</div>
+          <div class="section-sub">Proven strategies to grow your X audience without paying for engagement</div>
+        </div>
+        <div class="metrics-row" style="margin-bottom:22px">
+          <div class="metric"><div class="metric-value mv-y" style="font-size:20px">9am</div><div class="metric-label">Best posting time</div></div>
+          <div class="metric"><div class="metric-value mv-g" style="font-size:20px">1–3</div><div class="metric-label">Hashtags per post</div></div>
+          <div class="metric"><div class="metric-value mv-b" style="font-size:20px">80/20</div><div class="metric-label">Value vs. promo</div></div>
+          <div class="metric"><div class="metric-value" style="color:var(--purple);font-size:20px">Daily</div><div class="metric-label">Ideal frequency</div></div>
+        </div>
+        <div class="tips-grid">
+          <div class="tip-card"><span class="tip-cat t">Timing</span><div class="tip-title">Post when your audience is awake</div><div class="tip-desc">The best windows are 8–10am and 6–9pm in your audience's timezone. Even great content dies at 3am.</div></div>
+          <div class="tip-card"><span class="tip-cat e">Engagement</span><div class="tip-title">Reply within the first hour</div><div class="tip-desc">The first 60 minutes determine reach. Reply to every comment — the algorithm treats replies as strong signals.</div></div>
+          <div class="tip-card"><span class="tip-cat c">Content</span><div class="tip-title">Lead with the hook, not the context</div><div class="tip-desc">Your first sentence must stop the scroll. Open with the most specific or bold sentence in the post.</div></div>
+          <div class="tip-card"><span class="tip-cat m">Community</span><div class="tip-title">Comment before you post</div><div class="tip-desc">Spend 15 minutes leaving thoughtful replies on bigger accounts in your niche. It drives organic follows.</div></div>
+          <div class="tip-card"><span class="tip-cat c">Content</span><div class="tip-title">Use threads for complex ideas</div><div class="tip-desc">Threads get significantly more reach. Tease the conclusion in tweet 1 and deliver at the end.</div></div>
+          <div class="tip-card"><span class="tip-cat e">Engagement</span><div class="tip-title">Pin your best post</div><div class="tip-desc">Your pinned post is the first thing new visitors see. Make it show who you are and why they should follow.</div></div>
+          <div class="tip-card"><span class="tip-cat t">Timing</span><div class="tip-title">Consistency beats virality</div><div class="tip-desc">Accounts posting every day for 90 days grow 10x faster than those chasing one big moment.</div></div>
+          <div class="tip-card"><span class="tip-cat m">Community</span><div class="tip-title">Find your micro-niche</div><div class="tip-desc">Be specific — "the developer who writes about startup failures" attracts a loyal, engaged following.</div></div>
+          <div class="tip-card"><span class="tip-cat c">Content</span><div class="tip-title">Share opinions, not just facts</div><div class="tip-desc">Facts get nodded at. Opinions spark conversations. Tell people what you think news means.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit post</div>
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <label class="label">Post content</label>
+    <textarea id="edit-text" maxlength="280" oninput="updateEditCount()" style="min-height:100px;margin-bottom:6px"></textarea>
+    <div class="char-count" id="edit-char-count" style="margin-bottom:14px">0 / 280</div>
+    <div class="time-row" style="margin-bottom:0">
+      <div><label class="label">Date</label><input type="date" id="edit-date"/></div>
+      <div><label class="label">Time</label><input type="time" id="edit-time"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Auto-detect API base: on Vercel /api/tweet works as a relative path.
+// Locally use vercel dev which also serves on localhost:3000.
+const API_BASE = '';  // always relative — works on Vercel + vercel dev
+
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let calDate=new Date();
+let posts=JSON.parse(localStorage.getItem('pf_posts')||'[]');
+let autoEnabled=localStorage.getItem('pf_auto')==='true';
+let autoInterval=null, editingId=null, dowChart=null, hourChart=null;
+let currentUser=null; // { screenName, authenticated } — set from server ping
+
+function init(){
+  document.getElementById('today-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('post-date').value=new Date().toISOString().split('T')[0];
+  renderCalendar(); renderScheduled(); updateSidebar(); applyAutoState();
+  pingServer();
+  setInterval(pingServer,30000);
+  // Handle redirect params from OAuth callback
+  const params=new URLSearchParams(location.search);
+  if(params.get('connected')==='1'){
+    showToast(`Connected as @${params.get('user')||'you'}!`);
+    history.replaceState({},'','/');
+  }
+  if(params.get('disconnected')==='1'){showToast('Disconnected from X','info');history.replaceState({},'','/');}
+  if(params.get('error')==='auth_failed'){showToast('X auth failed — try again','err');history.replaceState({},'','/');}
+}
+
+function switchPage(pg,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+pg).classList.add('active'); btn.classList.add('active');
+  const t={ideas:'Idea Generator',schedule:'Scheduler',analytics:'Analytics',api:'X Account',tips:'Growth Tips'};
+  document.getElementById('page-title').textContent=t[pg];
+  if(pg==='analytics') setTimeout(renderAnalytics,50);
+}
+
+async function generateIdeas(){
+  const topic=document.getElementById('topic-input').value.trim();
+  const tone=document.getElementById('tone-select').value;
+  if(!topic){showToast('Enter a topic first!','err');return;}
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=true; btn.textContent='Generating…';
+  document.getElementById('ideas-container').innerHTML=`<div class="loading-state"><div class="spinner"></div><div>Crafting ideas for "${esc(topic)}"…</div></div>`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are an expert X (Twitter) content strategist. Generate 6 diverse post ideas about: "${topic}". Tone: ${tone}.
+For each provide:
+- "type": short label (Hot Take, Story, Question, Stat, Thread, Listicle, Poll, Unpopular Opinion)
+- "text": ready-to-post text under 280 characters
+Respond ONLY with a valid JSON array. No markdown, no backticks, no preamble.`}]})
+    });
+    const data=await res.json();
+    const raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const ideas=JSON.parse(raw);
+    document.getElementById('ideas-container').innerHTML=`<div class="ideas-grid">${ideas.map(idea=>`
+      <div class="idea-card">
+        <div class="idea-type">${esc(idea.type)}</div>
+        <div class="idea-text">${esc(idea.text)}</div>
+        <div class="idea-actions">
+          <button class="idea-btn" onclick="copyText(${JSON.stringify(idea.text)})">Copy</button>
+          <button class="idea-btn sch" onclick="scheduleIdea(${JSON.stringify(idea.text)})">Schedule</button>
+          <button class="idea-btn pnow" onclick="quickPost(${JSON.stringify(idea.text)})">Post now</button>
+        </div>
+      </div>`).join('')}</div>`;
+  }catch(e){
+    document.getElementById('ideas-container').innerHTML=`<div class="empty-state"><div class="empty-icon">!</div><div class="empty-title">Something went wrong</div><div class="section-sub">Check your connection and try again</div></div>`;
+  }
+  btn.disabled=false; btn.textContent='Generate';
+}
+
+function copyText(t){navigator.clipboard.writeText(t).catch(()=>{});showToast('Copied!');}
+function scheduleIdea(t){switchPage('schedule',document.querySelectorAll('.nav-item')[1]);document.getElementById('post-textarea').value=t;updateCharCount();showToast('Post ready — pick a date and time','info');}
+function quickPost(t){switchPage('api',document.querySelectorAll('.nav-item')[3]);document.getElementById('live-post-text').value=t;updateLiveCount();}
+
+function renderCalendar(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById('cal-month-label').textContent=`${MONTHS[m]} ${y}`;
+  document.getElementById('cal-days-header').innerHTML=DAYS.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay(),dim=new Date(y,m+1,0).getDate(),prev=new Date(y,m,0).getDate();
+  const today=new Date(); let cells='';
+  for(let i=0;i<first;i++) cells+=`<div class="cal-cell other-month"><div class="cal-date">${prev-first+1+i}</div></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${pad(m+1)}-${pad(d)}`;
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+    const dp=posts.filter(p=>p.date===ds&&p.status!=='draft');
+    cells+=`<div class="cal-cell${isToday?' today':''}" onclick="selectDay('${ds}')">
+      <div class="cal-date">${d}</div>
+      ${dp.length?`<div class="cal-dot${dp.some(p=>p.status==='posted')?' done':''}"></div><div class="cal-preview">${esc(dp[0].text)}</div>`:''}
+    </div>`;
+  }
+  for(let i=1;i<=42-first-dim;i++) cells+=`<div class="cal-cell other-month"><div class="cal-date">${i}</div></div>`;
+  document.getElementById('cal-cells').innerHTML=cells;
+}
+
+function selectDay(ds){
+  document.getElementById('post-date').value=ds;
+  const d=new Date(ds+'T12:00:00');
+  document.getElementById('selected-date-label').textContent=`Post on ${d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}`;
+  document.getElementById('post-textarea').focus();
+}
+function prevMonth(){calDate.setMonth(calDate.getMonth()-1);renderCalendar();}
+function nextMonth(){calDate.setMonth(calDate.getMonth()+1);renderCalendar();}
+function updateCharCount(){const l=document.getElementById('post-textarea').value.length;const el=document.getElementById('char-count');el.textContent=`${l} / 280`;el.classList.toggle('warn',l>250);}
+function updateLiveCount(){const l=document.getElementById('live-post-text').value.length;const el=document.getElementById('live-char-count');el.textContent=`${l} / 280`;el.classList.toggle('warn',l>250);}
+function updateEditCount(){const l=document.getElementById('edit-text').value.length;const el=document.getElementById('edit-char-count');el.textContent=`${l} / 280`;el.classList.toggle('warn',l>250);}
+
+function addPost(status='scheduled'){
+  const text=document.getElementById('post-textarea').value.trim();
+  const date=document.getElementById('post-date').value;
+  const time=document.getElementById('post-time').value;
+  if(!text){showToast('Write your post first!','err');return;}
+  if(!date&&status!=='draft'){showToast('Pick a date!','err');return;}
+  posts.push({text,date:date||'',time:time||'',id:Date.now(),status,retries:0,tweetId:null,tweetUrl:null});
+  posts.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  save(); renderCalendar(); renderScheduled(); updateSidebar();
+  document.getElementById('post-textarea').value='';
+  document.getElementById('char-count').textContent='0 / 280';
+  showToast(status==='draft'?'Draft saved!':'Post scheduled!');
+}
+
+function renderScheduled(){
+  const el=document.getElementById('scheduled-posts');
+  if(!posts.length){el.innerHTML='<div style="color:var(--g4);font-size:12px;text-align:center;padding:16px">No posts yet</div>';return;}
+  el.innerHTML=posts.map(p=>{
+    const tc=p.status==='posted'?'posted':p.status==='failed'?'failed':p.status==='draft'?'draft':'';
+    const ds=p.date?`${fmtDate(p.date)} · ${p.time}`:'Draft';
+    return `<div class="si status-${p.status}">
+      <div class="si-time ${tc}">${ds}</div>
+      <div class="si-text">${esc(p.text)}</div>
+      ${p.tweetUrl?`<a class="si-link" href="${p.tweetUrl}" target="_blank">View on X →</a>`:''}
+      <div class="si-actions">
+        ${p.status==='scheduled'||p.status==='draft'?`<button class="sb post" onclick="manualPost(${p.id})">Post now</button>`:''}
+        ${p.status==='failed'?`<button class="sb retry" onclick="retryPost(${p.id})">Retry</button>`:''}
+        <button class="sb edit" onclick="openEditModal(${p.id})">Edit</button>
+        <button class="sb del" onclick="delPost(${p.id})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function delPost(id){posts=posts.filter(p=>p.id!==id);save();renderCalendar();renderScheduled();updateSidebar();}
+function updateSidebar(){document.getElementById('streak-count').textContent=posts.length;}
+
+async function sendToX(text){
+  if(!currentUser||!currentUser.authenticated) return {ok:false,error:'Not signed in to X. Go to X Account to connect.'};
+  try{
+    const res=await fetch('/api/tweet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const data=await res.json();
+    if(res.ok&&data.success) return {ok:true,tweetId:data.tweetId,tweetUrl:data.tweetUrl};
+    if(res.status===401) return {ok:false,error:'Session expired — please sign in again on the X Account page.'};
+    return {ok:false,error:data.error||'Unknown error'};
+  }catch(e){return {ok:false,error:'Cannot reach the API. Is the site deployed on Vercel?'};}
+}
+
+async function manualPost(id){
+  const p=posts.find(x=>x.id===id);if(!p)return;
+  const r=await sendToX(p.text);
+  if(r.ok){p.status='posted';p.tweetId=r.tweetId;p.tweetUrl=r.tweetUrl;showToast('Posted to X!');}
+  else showToast(`Failed: ${r.error}`,'err');
+  save();renderScheduled();renderCalendar();
+}
+
+async function retryPost(id){
+  const p=posts.find(x=>x.id===id);if(!p)return;
+  p.retries=(p.retries||0)+1; p.status='scheduled';
+  await manualPost(id);
+}
+
+async function postLive(){
+  const text=document.getElementById('live-post-text').value.trim();
+  const btn=document.getElementById('post-live-btn');
+  const resultEl=document.getElementById('live-result');
+  if(!text){showToast('Write your post first!','err');return;}
+  if(!currentUser||!currentUser.authenticated){showToast('Sign in to X first — go to X Account','err');return;}
+  btn.textContent='Posting…';btn.disabled=true;resultEl.style.display='none';
+  const r=await sendToX(text);
+  if(r.ok){
+    showToast('Posted to X!');
+    document.getElementById('live-post-text').value='';
+    document.getElementById('live-char-count').textContent='0 / 280';
+    resultEl.className='info-box success';
+    resultEl.innerHTML=`<strong>Posted!</strong> <a style="color:var(--teal)" href="${r.tweetUrl}" target="_blank">View on X →</a>`;
+  }else{
+    showToast(`Error: ${r.error}`,'err');
+    resultEl.className='info-box';
+    resultEl.innerHTML=`<strong>Error:</strong> ${esc(r.error)}`;
+  }
+  resultEl.style.display='block'; btn.textContent='Post to X →'; btn.disabled=false;
+}
+
+function toggleAutoScheduler(){
+  autoEnabled=!autoEnabled; localStorage.setItem('pf_auto',String(autoEnabled));
+  applyAutoState(); showToast(autoEnabled?'Auto-posting enabled!':'Auto-posting disabled.',autoEnabled?'ok':'info');
+}
+
+function applyAutoState(){
+  const btn=document.getElementById('auto-toggle-btn');
+  const mainBtn=document.getElementById('auto-main-btn');
+  const badge=document.getElementById('auto-badge');
+  if(autoEnabled){
+    btn.textContent='Auto-post: ON';btn.className='tbar-btn on';
+    if(mainBtn){mainBtn.textContent='Disable auto-posting';mainBtn.style.background='var(--red)';}
+    badge.textContent='Auto: ON';badge.className='auto-badge on';
+    if(!autoInterval) autoInterval=setInterval(runAutoScheduler,60000);
+  }else{
+    btn.textContent='Auto-post: OFF';btn.className='tbar-btn';
+    if(mainBtn){mainBtn.textContent='Enable auto-posting';mainBtn.style.background='var(--g3)';}
+    badge.textContent='Auto: OFF';badge.className='auto-badge off';
+    if(autoInterval){clearInterval(autoInterval);autoInterval=null;}
+  }
+}
+
+async function runAutoScheduler(){
+  if(!autoEnabled)return;
+  const now=new Date();
+  const due=posts.filter(p=>p.status==='scheduled'&&p.date&&p.time&&new Date(`${p.date}T${p.time}:00`)<=now);
+  for(const p of due){
+    const r=await sendToX(p.text);
+    if(r.ok){p.status='posted';p.tweetId=r.tweetId;p.tweetUrl=r.tweetUrl;showToast(`Auto-posted: "${p.text.substring(0,40)}…"`);}
+    else{p.retries=(p.retries||0)+1;if(p.retries>=3){p.status='failed';showToast(`Post failed after 3 attempts`,'err');}}
+  }
+  if(due.length){save();renderScheduled();renderCalendar();}
+}
+
+function openEditModal(id){
+  const p=posts.find(x=>x.id===id);if(!p)return;
+  editingId=id;
+  document.getElementById('edit-text').value=p.text;
+  document.getElementById('edit-date').value=p.date||'';
+  document.getElementById('edit-time').value=p.time||'';
+  updateEditCount();
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal(){document.getElementById('edit-modal').classList.remove('open');editingId=null;}
+function saveEdit(){
+  if(!editingId)return;
+  const p=posts.find(x=>x.id===editingId);if(!p)return;
+  const text=document.getElementById('edit-text').value.trim();
+  if(!text){showToast('Post text cannot be empty','err');return;}
+  p.text=text; p.date=document.getElementById('edit-date').value; p.time=document.getElementById('edit-time').value;
+  if(p.status==='failed') p.status='scheduled';
+  save();renderScheduled();renderCalendar();closeEditModal();showToast('Post updated!');
+}
+
+async function pingServer(){
+  try{
+    const res=await fetch('/api/tweet',{method:'GET',signal:AbortSignal.timeout(5000)});
+    const data=await res.json();
+    const online=data.status==='ok';
+    setSrvStatus(online);
+    currentUser={authenticated:data.authenticated,screenName:data.screenName};
+    updateConnectBtn();
+    updateAccountUI();
+  }catch{
+    setSrvStatus(false);
+    currentUser=null;
+    updateConnectBtn();
+  }
+}
+
+function updateAccountUI(){
+  const signedIn=currentUser&&currentUser.authenticated;
+  const signinCard=document.getElementById('signin-card');
+  const signedInCard=document.getElementById('signedIn-card');
+  if(!signinCard||!signedInCard)return;
+  if(signedIn){
+    signinCard.style.display='none';
+    signedInCard.style.display='block';
+    document.getElementById('connected-name').textContent=currentUser.screenName||'Connected';
+    document.getElementById('connected-handle').textContent=`@${currentUser.screenName||''}`;
+    document.getElementById('api-status-bar-connected').className='api-status ok';
+    document.getElementById('api-status-text-connected').textContent=`Signed in as @${currentUser.screenName}`;
+  }else{
+    signinCard.style.display='block';
+    signedInCard.style.display='none';
+    document.getElementById('api-status-bar').className='api-status none';
+    document.getElementById('api-status-text').textContent='Not connected';
+  }
+}
+
+function setSrvStatus(online){
+  const dot=document.getElementById('srv-dot'),lbl=document.getElementById('srv-label');
+  dot.className='srv-dot '+(online?'online':'offline');
+  lbl.className='srv-label '+(online?'online':'');
+  lbl.textContent=online?'Vercel online':'Function offline';
+}
+
+function handleConnectClick(){
+  if(currentUser&&currentUser.authenticated){
+    switchPage('api',document.querySelectorAll('.nav-item')[3]);
+  } else {
+    window.location.href='/api/auth';
+  }
+}
+
+
+function renderAnalytics(){
+  const now=new Date();
+  const ws=new Date(now);ws.setDate(now.getDate()-now.getDay());ws.setHours(0,0,0,0);
+  const ms=new Date(now.getFullYear(),now.getMonth(),1);
+  const posted=posts.filter(p=>p.status==='posted').length;
+  const failed=posts.filter(p=>p.status==='failed').length;
+  const thisWeek=posts.filter(p=>p.date&&new Date(p.date+'T00:00:00')>=ws).length;
+  const thisMonth=posts.filter(p=>p.date&&new Date(p.date+'T00:00:00')>=ms).length;
+  document.getElementById('a-total').textContent=posts.length;
+  document.getElementById('a-posted').textContent=posted;
+  document.getElementById('a-days').textContent=new Set(posts.filter(p=>p.date).map(p=>p.date)).size;
+  document.getElementById('a-failed').textContent=failed;
+  const wp=Math.min(100,Math.round((thisWeek/7)*100));
+  document.getElementById('wk-val').textContent=`${thisWeek} / 7`;
+  document.getElementById('wk-bar').style.width=wp+'%';
+  document.getElementById('wk-sub').textContent=thisWeek>=7?'Weekly goal achieved!':`${7-thisWeek} more post${7-thisWeek===1?'':'s'} to go`;
+  const mp=Math.min(100,Math.round((thisMonth/30)*100));
+  document.getElementById('mo-val').textContent=`${thisMonth} / 30`;
+  document.getElementById('mo-bar').style.width=mp+'%';
+  renderDowChart();renderHourChart();renderHistory();
+}
+
+function renderDowChart(){
+  const c=[0,0,0,0,0,0,0];
+  posts.filter(p=>p.date).forEach(p=>{c[new Date(p.date+'T12:00:00').getDay()]++;});
+  const ctx=document.getElementById('dow-chart').getContext('2d');
+  if(dowChart)dowChart.destroy();
+  dowChart=new Chart(ctx,{type:'bar',data:{labels:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],datasets:[{data:c,backgroundColor:'rgba(232,255,71,0.7)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#6b6b6b',font:{family:'DM Sans',size:11}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#6b6b6b',font:{family:'DM Sans',size:11},stepSize:1}}}}});
+}
+
+function renderHourChart(){
+  const c=Array(24).fill(0);
+  posts.forEach(p=>{if(p.time) c[parseInt(p.time.split(':')[0])]++;});
+  const labels=c.map((_,i)=>i===0?'12am':i<12?`${i}am`:i===12?'12pm':`${i-12}pm`);
+  const ctx=document.getElementById('hour-chart').getContext('2d');
+  if(hourChart)hourChart.destroy();
+  hourChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:c,backgroundColor:'rgba(27,204,170,0.7)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#6b6b6b',font:{family:'DM Sans',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:8}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#6b6b6b',font:{family:'DM Sans',size:11},stepSize:1}}}}});
+}
+
+function renderHistory(){
+  const el=document.getElementById('history-list');
+  if(!posts.length){el.innerHTML='<div style="color:var(--g4);font-size:12px;text-align:center;padding:18px">No posts yet</div>';return;}
+  el.innerHTML=[...posts].reverse().map(p=>`
+    <div class="hi">
+      <div class="hi-dot ${p.status}"></div>
+      <div class="hi-meta">
+        <div class="hi-date">${p.date?fmtDate(p.date)+' · '+p.time:'Draft'}</div>
+        <div class="hi-text">${esc(p.text)}</div>
+        <div class="hi-footer">
+          <span class="hi-badge hb-${p.status}">${p.status.charAt(0).toUpperCase()+p.status.slice(1)}</span>
+          ${p.tweetUrl?`<a class="hi-link" href="${p.tweetUrl}" target="_blank">View on X →</a>`:''}
+          ${p.status==='failed'?`<span style="font-size:10px;color:var(--g4)">${p.retries||0} attempt${(p.retries||0)===1?'':'s'}</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function save(){localStorage.setItem('pf_posts',JSON.stringify(posts));}
+function pad(n){return String(n).padStart(2,'0');}
+function fmtDate(ds){const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let tt=null;
+function showToast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;if(tt)clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3000);}
+
+document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeEditModal();});
+init();
+</script>
+</body>
+</html>
